@@ -1,25 +1,37 @@
 #include <emscripten.h>
 #include <vector>
+#include <cstdio>
 #include "../include/Particle.h"
 #include "../include/Parse.h"
 #include "../include/Grid.h"
 
 extern "C" {
 
-// WASM-friendly entry point
 EMSCRIPTEN_KEEPALIVE
-size_t parseXYZFromMemory(char* data, particle::Particle* outArray) {
-    std::vector<particle::Particle> particles;
-    
-    // Wrap the incoming memory buffer as a "file-like" pointer
-    parse::readXYZFastFromBuffer(data, particles); // <-- new helper
+int add(int a, int b) {
+    return a + b;
+}
 
-    // Copy into outArray
-    for (size_t i = 0; i < particles.size(); ++i) {
-        outArray[i] = particles[i];
+EMSCRIPTEN_KEEPALIVE
+size_t parseXYZ(char* data, size_t length) {
+    printf("parseXYZ called! length = %zu\n", length);
+    std::fflush(stdout);
+
+    try {
+        std::vector<particle::Particle> particles;
+        parse::readXYZFastFromBuffer(data, length, particles);
+        printf("✅ parsed %zu particles\n", particles.size());
+        std::fflush(stdout);
+        return particles.size();
+    } catch (const std::exception& e) {
+        printf("❌ Exception: %s\n", e.what());
+        std::fflush(stdout);
+        return 0;
+    } catch (...) {
+        printf("❌ Unknown exception!\n");
+        std::fflush(stdout);
+        return 0;
     }
-
-    return particles.size();
 }
 
 }

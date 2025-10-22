@@ -5,29 +5,36 @@ export default function TestMath() {
   const [sum, setSum] = useState(null);
   const [fileName, setFileName] = useState(null);
   const [fileSize, setFileSize] = useState(null);
+  const [particleCount, setParticleCount] = useState(null);
 
   const [moduleInstance, setModuleInstance] = useState(null);
+  const [malloc, setMalloc] = useState(null);
+  const [free, setFree] = useState(null);
+  const [parseXYZ, setParseXYZ] = useState(null);
 
-  // ---- Load WebAssembly module ----
   useEffect(() => {
-    import("../wasm/math.js")
+    import("../wasm/main.js")
       .then(async (createModule) => {
         const module = await createModule.default();
+
+        // Wrap exported functions
+        setMalloc(() => module.cwrap("malloc", "number", ["number"]));
+        setFree(() => module.cwrap("free", null, ["number"]));
+        setParseXYZ(() => module.cwrap("parseXYZ", "number", ["number", "number"]));
+
         setModuleInstance(module);
 
-        const result = module._add(5, 8); // test function
+        // Optional test
+        const result = module._add ? module._add(5, 8) : "(no _add exported)";
         setSum(result);
         setStatus("WASM loaded successfully ✅");
       })
       .catch((err) => {
-        console.error("Failed to load WASM module:", err);
+        console.error(err);
         setStatus("Failed to load WASM module ❌");
       });
   }, []);
 
-
-
-  // ---- Handle .xyz file upload ----
   const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -41,7 +48,7 @@ export default function TestMath() {
     setFileName(file.name);
     setFileSize(file.size);
 
-    if (!moduleInstance) {
+    if (!moduleInstance || !malloc || !free || !parseXYZ) {
       alert("WASM module not loaded yet!");
       return;
     }
@@ -52,18 +59,20 @@ export default function TestMath() {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
 
-      const ptr = moduleInstance._malloc(bytes.length);
-      moduleInstance.HEAPU8.set(bytes, ptr);
+      // Allocate memory using cwrap-wrapped malloc
+      const ptr = malloc(bytes.length);
 
-      moduleInstance.ccall(
-        "parseXYZ",
-        null,
-        ["number", "number"],
-        [ptr, bytes.length]
-      );
+      // Get HEAPU8 from the WASM module correctly
+      const heap = new Uint8Array(moduleInstance.HEAPU8.buffer);
+      heap.set(bytes, ptr);
 
-      moduleInstance._free(ptr);
+      // Call the C++ function using cwrap
+      const count = parseXYZ(ptr, bytes.length);
 
+      // Free allocated memory
+      free(ptr);
+
+      setParticleCount(count);
       setStatus(`File processed successfully ✅ (${bytes.length} bytes)`);
     } catch (err) {
       console.error(err);
@@ -71,20 +80,15 @@ export default function TestMath() {
     }
   };
 
+
   return (
     <div style={styles.container}>
-      {/* WASM Demo */}
       <section style={styles.section}>
         <h2>🧮 Test Math WASM</h2>
         <p>{status}</p>
-        {sum !== null && (
-          <p>
-            5 + 8 = <strong>{sum}</strong>
-          </p>
-        )}
+        {sum !== null && <p>5 + 8 = <strong>{sum}</strong></p>}
       </section>
 
-      {/* File Upload Box */}
       <section style={styles.section}>
         <h3>📁 Upload an .xyz File</h3>
         <input
@@ -92,30 +96,17 @@ export default function TestMath() {
           accept=".xyz"
           onChange={handleFileChange}
           style={styles.fileInput}
+          disabled={!moduleInstance || !malloc || !free || !parseXYZ}
         />
-        {fileName && (
-          <p>
-            ✅ Uploaded file: <strong>{fileName}</strong> ({fileSize} bytes)
-          </p>
-        )}
+        {fileName && <p>✅ Uploaded file: <strong>{fileName}</strong> ({fileSize} bytes)</p>}
+        {particleCount !== null && <p>🧩 Parsed particles: <strong>{particleCount}</strong></p>}
       </section>
     </div>
   );
 }
 
-// ---- Inline styles ----
 const styles = {
-  container: {
-    border: "1px solid #ccc",
-    borderRadius: "8px",
-    padding: "1.5rem",
-    marginTop: "1.5rem",
-    maxWidth: "600px",
-  },
-  section: {
-    marginBottom: "1.5rem",
-  },
-  fileInput: {
-    marginTop: "0.5rem",
-  },
+  container: { border: "1px solid #ccc", borderRadius: "8px", padding: "1.5rem", marginTop: "1.5rem", maxWidth: "600px" },
+  section: { marginBottom: "1.5rem" },
+  fileInput: { marginTop: "0.5rem" },
 };

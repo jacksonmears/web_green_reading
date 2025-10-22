@@ -15,7 +15,7 @@ struct Particle {
 
 // old rigid parsing logic here, but working on a string
 EMSCRIPTEN_KEEPALIVE
-void parseXYZBuffer(const char* buffer, int length, Particle* outParticles, int* outCount) {
+void parseXYZBuffer(char* buffer, int length, Particle* outParticles, int* outCount) {
     std::vector<Particle> particles;
 
     std::string content(buffer, length); // convert raw bytes to string
