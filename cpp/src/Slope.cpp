@@ -7,11 +7,7 @@
 namespace geometry {
 
 
-Slope fitPlane(std::vector<particle::Particle>& particles,
-                     const size_t start_index,
-                     const size_t end_index,
-                     float scale)
-{
+Slope fitPlane(std::vector<particle::Particle>& particles,const size_t start_index,const size_t end_index,float scale){
     size_t n = end_index - start_index;
     if (n < 3)
         return {0,0,0,0,0,0,0,0,0,0,0,0,0,false};
@@ -119,7 +115,7 @@ void fillCellPlane(std::vector<particle::Particle>& particles,std::unordered_map
     }
 }
 
-void fillCellMap(std::vector<particle::Particle>& particles,std::unordered_map<size_t, Cell>& cellMap) {
+void fillCellMap(std::vector<particle::Particle>& particles, std::unordered_map<size_t, Cell>& cellMap) {
     particle::fillCellParticles(particles, cellMap);
     fillCellPlane(particles, cellMap);
 }

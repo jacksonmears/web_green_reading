@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 export default function TestMath() {
   const [status, setStatus] = useState("Loading WASM...");
@@ -10,21 +10,19 @@ export default function TestMath() {
   const [moduleInstance, setModuleInstance] = useState(null);
   const [malloc, setMalloc] = useState(null);
   const [free, setFree] = useState(null);
-  const [parseXYZ, setParseXYZ] = useState(null);
 
+  const canvasRef = useRef(null);
+
+  // Load WASM
   useEffect(() => {
     import("../wasm/main.js")
       .then(async (createModule) => {
         const module = await createModule.default();
 
-        // Wrap exported functions
         setMalloc(() => module.cwrap("malloc", "number", ["number"]));
         setFree(() => module.cwrap("free", null, ["number"]));
-        setParseXYZ(() => module.cwrap("parseXYZ", "number", ["number", "number"]));
-
         setModuleInstance(module);
 
-        // Optional test
         const result = module._add ? module._add(5, 8) : "(no _add exported)";
         setSum(result);
         setStatus("WASM loaded successfully ✅");
@@ -35,6 +33,7 @@ export default function TestMath() {
       });
   }, []);
 
+  // Handle .xyz file upload
   const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -48,7 +47,7 @@ export default function TestMath() {
     setFileName(file.name);
     setFileSize(file.size);
 
-    if (!moduleInstance || !malloc || !free || !parseXYZ) {
+    if (!moduleInstance || !malloc || !free) {
       alert("WASM module not loaded yet!");
       return;
     }
@@ -59,34 +58,77 @@ export default function TestMath() {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
 
-      // Allocate memory using cwrap-wrapped malloc
-      const ptr = malloc(bytes.length);
+      // Wrap WASM functions
+      const parseXYZFlattened = moduleInstance.cwrap(
+        "parseXYZFlattened",
+        "number",          // returns pointer to float array
+        ["number", "number", "number"] // data ptr, length, outCount ptr
+      );
+      const freeParticles = moduleInstance.cwrap("freeParticles", null, ["number"]);
 
-      // Get HEAPU8 from the WASM module correctly
-      const heap = new Uint8Array(moduleInstance.HEAPU8.buffer);
-      heap.set(bytes, ptr);
+      // Allocate memory in WASM
+      const xyzPtr = malloc(bytes.length);
+      const heapU8 = new Uint8Array(moduleInstance.HEAPU8.buffer);
+      heapU8.set(bytes, xyzPtr);
 
-      // Call the C++ function using cwrap
-      const count = parseXYZ(ptr, bytes.length);
+      const outCountPtr = malloc(4); // int32 for particle count
+      const floatPtr = parseXYZFlattened(xyzPtr, bytes.length, outCountPtr);
 
-      // Free allocated memory
-      free(ptr);
+      const outCount = new Int32Array(moduleInstance.HEAP32.buffer, outCountPtr, 1)[0];
+      const floats = new Float32Array(moduleInstance.HEAPF32.buffer, floatPtr, outCount * 6);
 
-      setParticleCount(count);
-      setStatus(`File processed successfully ✅ (${bytes.length} bytes)`);
+      // --- Top-down view normalization (X -> canvas X, Z -> canvas Y) ---
+      let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      for (let i = 0; i < outCount; i++) {
+        const x = floats[i * 6 + 0]; // X
+        const z = floats[i * 6 + 2]; // Z
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (z < minZ) minZ = z;
+        if (z > maxZ) maxZ = z;
+      }
+
+      // Render particles to Canvas2D
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < outCount; i++) {
+        const xRaw = floats[i * 6 + 0]; // X
+        const zRaw = floats[i * 6 + 2]; // Z
+        const r = floats[i * 6 + 3];
+        const g = floats[i * 6 + 4];
+        const b = floats[i * 6 + 5];
+
+        // Map to [0, canvas.width/height] with optional padding
+        const padding = 10; // px padding around edges
+        const x = padding + ((maxX - xRaw) / (maxX - minX)) * (canvas.width - 2 * padding); // flip X
+        const y = padding + ((maxZ - zRaw) / (maxZ - minZ)) * (canvas.height - 2 * padding); // invert Z
+
+        ctx.fillStyle = `rgb(${Math.floor(r * 255)}, ${Math.floor(g * 255)}, ${Math.floor(b * 255)})`;
+        ctx.fillRect(x, y, 1, 1);
+      }
+
+
+      // Free WASM memory
+      free(xyzPtr);
+      free(outCountPtr);
+      freeParticles(floatPtr);
+
+      setParticleCount(outCount);
+      setStatus(`File rendered successfully ✅ (${bytes.length} bytes, ${outCount} particles)`);
     } catch (err) {
       console.error(err);
       setStatus("Failed to process file ❌");
     }
   };
 
-
   return (
     <div style={styles.container}>
       <section style={styles.section}>
         <h2>🧮 Test Math WASM</h2>
         <p>{status}</p>
-        {sum !== null && <p>5 + 8 = <strong>{sum}</strong></p>}
+        {sum !== null && <p>5 + 9 = <strong>{sum}</strong></p>}
       </section>
 
       <section style={styles.section}>
@@ -96,17 +138,31 @@ export default function TestMath() {
           accept=".xyz"
           onChange={handleFileChange}
           style={styles.fileInput}
-          disabled={!moduleInstance || !malloc || !free || !parseXYZ}
+          disabled={!moduleInstance || !malloc || !free}
         />
         {fileName && <p>✅ Uploaded file: <strong>{fileName}</strong> ({fileSize} bytes)</p>}
-        {particleCount !== null && <p>🧩 Parsed particles: <strong>{particleCount}</strong></p>}
+        {particleCount && <p>🧩 Rendered particles: <strong>{particleCount}</strong></p>}
       </section>
+
+      <canvas
+        ref={canvasRef}
+        id="canvas"
+        width={800}
+        height={600}
+        style={{ border: "1px solid black", display: "block", marginTop: "1rem" }}
+      />
     </div>
   );
 }
 
 const styles = {
-  container: { border: "1px solid #ccc", borderRadius: "8px", padding: "1.5rem", marginTop: "1.5rem", maxWidth: "600px" },
+  container: {
+    border: "1px solid #ccc",
+    borderRadius: "8px",
+    padding: "1.5rem",
+    marginTop: "1.5rem",
+    maxWidth: "800px"
+  },
   section: { marginBottom: "1.5rem" },
   fileInput: { marginTop: "0.5rem" },
 };
