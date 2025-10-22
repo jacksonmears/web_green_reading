@@ -1,0 +1,4 @@
+./../emsdk/emsdk_env.ps1
+
+
+emcc cpp/src/Grid.cpp  cpp/src/Parse.cpp cpp/src/Particle.cpp cpp/src/Slope.cpp cpp/src/main.cpp -O3 -sMODULARIZE -sEXPORT_ES6=1 -sENVIRONMENT=web -o src/wasm/main.js
