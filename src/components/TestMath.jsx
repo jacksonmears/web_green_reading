@@ -135,12 +135,6 @@ export default function TestMath() {
   return (
     <div style={styles.container}>
       <section style={styles.section}>
-        <h2>🧮 Test Math WASM</h2>
-        <p>{status}</p>
-        {sum !== null && <p>5 + 9 = <strong>{sum}</strong></p>}
-      </section>
-
-      <section style={styles.section}>
         <h3>📁 Upload an .xyz File</h3>
         <input
           type="file"
