@@ -61,8 +61,8 @@ export default function TestMath() {
       // Wrap WASM functions
       const parseXYZFlattened = moduleInstance.cwrap(
         "parseXYZFlattened",
-        "number",          // returns pointer to float array
-        ["number", "number", "number"] // data ptr, length, outCount ptr
+        "number",          
+        ["number", "number", "number"]
       );
       const freeParticles = moduleInstance.cwrap("freeParticles", null, ["number"]);
 
@@ -77,7 +77,7 @@ export default function TestMath() {
       const outCount = new Int32Array(moduleInstance.HEAP32.buffer, outCountPtr, 1)[0];
       const floats = new Float32Array(moduleInstance.HEAPF32.buffer, floatPtr, outCount * 6);
 
-      // --- Top-down view normalization (X -> canvas X, Z -> canvas Y) ---
+      // --- Compute bounding box ---
       let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
       for (let i = 0; i < outCount; i++) {
         const x = floats[i * 6 + 0]; // X
@@ -88,22 +88,30 @@ export default function TestMath() {
         if (z > maxZ) maxZ = z;
       }
 
-      // Render particles to Canvas2D
+      const width = maxX - minX;
+      const height = maxZ - minZ;
+      const scaleSize = 800 - 2 * 10; // canvas size minus padding
+      const maxDim = Math.max(width, height);
+      const scale = scaleSize / maxDim;
+
+      // Compute leftover space for centering
+      const xOffset = (scaleSize - width * scale) / 2;
+      const yOffset = (scaleSize - height * scale) / 2;
+
+      // Render particles
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       for (let i = 0; i < outCount; i++) {
-        const xRaw = floats[i * 6 + 0]; // X
-        const zRaw = floats[i * 6 + 2]; // Z
+        const xRaw = floats[i * 6 + 0];
+        const zRaw = floats[i * 6 + 2];
         const r = floats[i * 6 + 3];
         const g = floats[i * 6 + 4];
         const b = floats[i * 6 + 5];
 
-        // Map to [0, canvas.width/height] with optional padding
-        const padding = 10; // px padding around edges
-        const x = padding + ((maxX - xRaw) / (maxX - minX)) * (canvas.width - 2 * padding); // flip X
-        const y = padding + ((maxZ - zRaw) / (maxZ - minZ)) * (canvas.height - 2 * padding); // invert Z
+        const x = 10 + xOffset + ((maxX - xRaw) * scale); // flip X if needed: (maxX - xRaw)
+        const y = 10 + yOffset + ((maxZ - zRaw) * scale); // invert Z for top-down
 
         ctx.fillStyle = `rgb(${Math.floor(r * 255)}, ${Math.floor(g * 255)}, ${Math.floor(b * 255)})`;
         ctx.fillRect(x, y, 1, 1);
@@ -148,7 +156,7 @@ export default function TestMath() {
         ref={canvasRef}
         id="canvas"
         width={800}
-        height={600}
+        height={800}
         style={{ border: "1px solid black", display: "block", marginTop: "1rem" }}
       />
     </div>
@@ -161,7 +169,7 @@ const styles = {
     borderRadius: "8px",
     padding: "1.5rem",
     marginTop: "1.5rem",
-    maxWidth: "800px"
+    maxWidth: "820px"
   },
   section: { marginBottom: "1.5rem" },
   fileInput: { marginTop: "0.5rem" },

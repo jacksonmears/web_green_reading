@@ -7,9 +7,6 @@ function App() {
 
   return (
     <>
-      <h1>Vite + React + Emscripten</h1>
-      <button onClick={() => setCount((c) => c + 1)}>count is {count}</button>
-
       <TestMath />
     </>
   );
