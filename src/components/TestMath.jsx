@@ -110,8 +110,8 @@ export default function TestMath() {
         const g = floats[i * 6 + 4];
         const b = floats[i * 6 + 5];
 
-        const x = 10 + xOffset + ((maxX - xRaw) * scale); // flip X if needed: (maxX - xRaw)
-        const y = 10 + yOffset + ((maxZ - zRaw) * scale); // invert Z for top-down
+        const x = 10 + xOffset + ((xRaw - minX) * scale); // flip X if needed: (maxX - xRaw)
+        const y = 10 + yOffset + ((zRaw - minZ) * scale); // invert Z for top-down
 
         ctx.fillStyle = `rgb(${Math.floor(r * 255)}, ${Math.floor(g * 255)}, ${Math.floor(b * 255)})`;
         ctx.fillRect(x, y, 1, 1);
