@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from "react";
 
 export default function TestMath() {
   const [status, setStatus] = useState("Loading WASM...");
-  const [sum, setSum] = useState(null);
   const [fileName, setFileName] = useState(null);
   const [fileSize, setFileSize] = useState(null);
   const [particleCount, setParticleCount] = useState(null);
@@ -17,14 +16,16 @@ export default function TestMath() {
   useEffect(() => {
     import("../wasm/main.js")
       .then(async (createModule) => {
-        const module = await createModule.default();
+        const module = await createModule.default({
+          locateFile: (path) => {
+            return `${import.meta.env.BASE_URL}wasm/${path}`;
+          },
+        });
+
 
         setMalloc(() => module.cwrap("malloc", "number", ["number"]));
         setFree(() => module.cwrap("free", null, ["number"]));
         setModuleInstance(module);
-
-        const result = module._add ? module._add(5, 8) : "(no _add exported)";
-        setSum(result);
         setStatus("WASM loaded successfully ✅");
       })
       .catch((err) => {
