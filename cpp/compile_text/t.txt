@@ -1,6 +1,8 @@
 ./../emsdk/emsdk_env.ps1
 
 emcc cpp/src/Grid.cpp cpp/src/Color.cpp cpp/src/Parse.cpp cpp/src/Particle.cpp cpp/src/Slope.cpp cpp/src/main.cpp -O3 -sMODULARIZE -sEXPORT_ES6=1 -sINITIAL_MEMORY=134217728 -sENVIRONMENT=web -sEXPORTED_FUNCTIONS='["_malloc","_free","_parseXYZFlattened"]' -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap","HEAPU8", "HEAPF32", "HEAP32"]' -o src/wasm/main.js
+emcc cpp/src/Grid.cpp cpp/src/Color.cpp cpp/src/Parse.cpp cpp/src/Particle.cpp cpp/src/Slope.cpp cpp/src/main.cpp -O3 -sMODULARIZE -sEXPORT_ES6=1 -sINITIAL_MEMORY=67108864 -sENVIRONMENT=web -sEXPORTED_FUNCTIONS='["_malloc","_free","_parseXYZFlattened"]' -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap","HEAPU8", "HEAPF32", "HEAP32"]' -o src/wasm/main.js
+
 
 
 https://jacksonmears.github.io/web_green_reading/?t=123

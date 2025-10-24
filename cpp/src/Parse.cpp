@@ -15,8 +15,8 @@ size_t getSizePCD(char* data, size_t length) {
 
 
 
-float parseFloat4Decimal(char*& data) {
-    while (*data == ' ' || *data == ',') ++data;
+float parseFloat4Decimal(char*& data, char* end) {
+    while (*data == ' ' || *data == ',' || *data == '\t' || *data == '\r' || *data == '\n') ++data;
 
     int sign = 1;
     if (*data == '-') { sign = -1; ++data; }
@@ -35,8 +35,6 @@ float parseFloat4Decimal(char*& data) {
         ++data;
     }
 
-    while (*data == '\n' || *data == '\r' || *data == ' ' || *data == ',') ++data;
-
     float value = sign * (intPart + fracPart * 0.0001f);
 
     return value;
@@ -51,14 +49,16 @@ void readXYZFastFromBuffer(char* data, size_t length, std::vector<particle::Part
     char* ptr = data;
     char* end = data + length;
 
-    while (ptr < end) {
+    size_t parsedParticles = 0;
+    while (parsedParticles < particleCount) {
         float values[3];
         for (int i = 0; i < 3; ++i) {
-            values[i] = parseFloat4Decimal(ptr);
+            values[i] = parseFloat4Decimal(ptr, end);
         }
 
         size_t cell = grid::fetch_cell(values[0], values[2]);
         particles.emplace_back(values[0], values[1], values[2], 1, 1, 1, cell);
+        ++parsedParticles;
     }
 }
 

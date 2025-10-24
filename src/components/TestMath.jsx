@@ -96,11 +96,11 @@ export default function TestMath() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith(".xyz")) {
-      alert("Please upload a valid .xyz file.");
-      event.target.value = "";
-      return;
-    }
+    // if (!file.name.toLowerCase().endsWith(".xyz")) {
+    //   alert("Please upload a valid .xyz file.");
+    //   event.target.value = "";
+    //   return;
+    // }
 
     setFileName(file.name);
     setFileSize(file.size);
@@ -213,7 +213,7 @@ export default function TestMath() {
   return (
     <div style={styles.container}>
       <section style={styles.section}>
-        <h3>testing, version 1.1</h3>
+        <h3>testing, version 1.5</h3>
         <h3>📁 Upload an .xyz File</h3>
 
         {/* Ready indicators so you can see what's missing */}
@@ -226,7 +226,7 @@ export default function TestMath() {
 
         <input
           type="file"
-          accept=".xyz"
+          accept="*"
           onChange={handleFileChange}
           style={styles.fileInput}
           disabled={!ready}
