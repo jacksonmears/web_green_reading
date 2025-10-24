@@ -16,7 +16,7 @@ size_t getSizePCD(char* data, size_t length) {
 
 
 float parseFloat4Decimal(char*& data) {
-    while (*data == ' ') ++data;
+    while (*data == ' ' || *data == ',') ++data;
 
     int sign = 1;
     if (*data == '-') { sign = -1; ++data; }
@@ -35,7 +35,7 @@ float parseFloat4Decimal(char*& data) {
         ++data;
     }
 
-    while (*data == '\n' || *data == '\r' || *data == ' ') ++data;
+    while (*data == '\n' || *data == '\r' || *data == ' ' || *data == ',') ++data;
 
     float value = sign * (intPart + fracPart * 0.0001f);
 
