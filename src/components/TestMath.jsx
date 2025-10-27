@@ -1,89 +1,15 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useWasmModule } from "../hooks/useWasmModule.js";
 
 export default function TestMath() {
-  const [status, setStatus] = useState("Loading WASM...");
+  const [status, setStatus] = useState(" Waiting for WASM...");
   const [fileName, setFileName] = useState(null);
   const [fileSize, setFileSize] = useState(null);
   const [particleCount, setParticleCount] = useState(null);
   const [cellCount, setCellCount] = useState(null);
-
-  const [moduleInstance, setModuleInstance] = useState(null);
-  const [malloc, setMalloc] = useState(null);
-  const [free, setFree] = useState(null);
-
   const canvasRef = useRef(null);
 
-  // helper: is the module ready for use?
-  const ready = !!moduleInstance && typeof malloc === "function" && typeof free === "function";
-
-  useEffect(() => {
-    import("../wasm/main.js")
-      .then(async (createModule) => {
-        console.log("⏳ Initializing WASM module...");
-        const module = await createModule.default({
-          locateFile: (path) => {
-            const resolved = `${import.meta.env.BASE_URL}wasm/${path}`;
-            console.log("🔍 locateFile resolved:", resolved);
-            return resolved;
-          },
-        });
-
-        try {
-          const keys = Object.keys(module).filter((k) => k && k.length > 0);
-          console.log("✅ WASM module object keys (sample):", keys.slice(0, 80));
-        } catch (e) {
-          console.warn("Could not list module keys:", e);
-        }
-
-        let maybeMalloc = null;
-        let maybeFree = null;
-
-        if (typeof module.cwrap === "function") {
-          try {
-            const cwrapMalloc = module.cwrap("malloc", "number", ["number"]);
-            const cwrapFree = module.cwrap("free", null, ["number"]);
-            if (typeof cwrapMalloc === "function") maybeMalloc = (n) => cwrapMalloc(n);
-            if (typeof cwrapFree === "function") maybeFree = (p) => cwrapFree(p);
-            console.log("🔧 Using cwrap() for malloc/free");
-          } catch (e) {
-            console.warn("cwrap malloc/free failed:", e);
-          }
-        }
-
-        if (!maybeMalloc && typeof module._malloc === "function") {
-          maybeMalloc = (n) => module._malloc(n);
-          console.log("🔧 Falling back to module._malloc");
-        }
-        if (!maybeFree && typeof module._free === "function") {
-          maybeFree = (p) => module._free(p);
-          console.log("🔧 Falling back to module._free");
-        }
-
-        setModuleInstance(module);
-        setMalloc(() => (maybeMalloc ? maybeMalloc : null));
-        setFree(() => (maybeFree ? maybeFree : null));
-
-        if (module._add || module.cwrap?.("add", "number", ["number", "number"])) {
-          try {
-            const addFn =
-              typeof module._add === "function"
-                ? (a, b) => module._add(a, b)
-                : typeof module.cwrap === "function"
-                ? module.cwrap("add", "number", ["number", "number"])
-                : null;
-            if (addFn) console.log("Test add(2,3) =>", addFn(2, 3));
-          } catch (err) {
-            console.warn("Test add() failed:", err);
-          }
-        }
-
-        setStatus("WASM loaded (init done) — check console for details");
-      })
-      .catch((err) => {
-        console.error("❌ Failed to load WASM module:", err);
-        setStatus("Failed to load WASM module ❌ (see console)");
-      });
-  }, []);
+  const { moduleInstance, malloc, free, ready } = useWasmModule(setStatus);
 
   const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
@@ -161,9 +87,9 @@ export default function TestMath() {
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (outCount > 0) {
-        console.log("First particle floats:", floats.slice(0, Math.min(6, floats.length)));
-      }
+      // if (outCount > 0) {
+      //   console.log("First particle floats:", floats.slice(0, Math.min(6, floats.length)));
+      // }
 
       for (let i = 0; i < outCount; i++) {
         const xRaw = floats[i * 6 + 0];
@@ -211,7 +137,7 @@ export default function TestMath() {
         const ax = cx + nx;
         const ay = cy + ny;
 
-        console.log(p.dx, p.dz, ax, ay);
+        // console.log(p.dx, p.dz, ax, ay);
 
         // draw line
         ctx.strokeStyle = "black";
@@ -230,50 +156,7 @@ export default function TestMath() {
         ctx.lineTo(ax - headLength * Math.cos(angle + Math.PI / 6),
                   ay - headLength * Math.sin(angle + Math.PI / 6));
         ctx.stroke();
-        // // Draw upward arrow
-        // const arrowLength = 10; // pixels
-        // ctx.strokeStyle = "black";
-        // ctx.lineWidth = 2;
-        // ctx.beginPath();
-        // ctx.moveTo(cx, cy);                // start at centroid
-        // ctx.lineTo(cx+(arrowLength), cy + 0);  // line upward
-        // ctx.stroke();
-
-        // Draw simple arrowhead
-        // ctx.beginPath();
-        // ctx.moveTo(cx - 2, cy - arrowLength + 4);
-        // ctx.lineTo(cx, cy - arrowLength);
-        // ctx.lineTo(cx + 2, cy - arrowLength + 4);
-        // ctx.stroke();
-
-        // // Fixed-length slope arrow pointing in slope direction
-        // const arrowLength = 20; // constant length
-        // const len = Math.sqrt(p.dx*p.dx + p.dz*p.dz) || 1; // normalize
-        // const ax = cx + (p.dx / len) * arrowLength;
-        // const ay = cy + (p.dz / len) * arrowLength; // z → y
-
-        // ctx.strokeStyle = "black";
-        // ctx.lineWidth = 2;
-        // ctx.beginPath();
-        // ctx.moveTo(cx, cy);
-        // ctx.lineTo(ax, ay);
-        // ctx.stroke();
-
-        // // Draw simple arrowhead
-        // const angle = Math.atan2(ay - cy, ax - cx);
-        // const headLength = 5;
-        // ctx.beginPath();
-        // ctx.moveTo(ax - headLength * Math.cos(angle - Math.PI / 6),
-        //           ay - headLength * Math.sin(angle - Math.PI / 6));
-        // ctx.lineTo(ax, ay);
-        // ctx.lineTo(ax - headLength * Math.cos(angle + Math.PI / 6),
-        //           ay - headLength * Math.sin(angle + Math.PI / 6));
-        // ctx.stroke();
-
-
       }
-
-
 
       free(xyzPtr);
       free(outCountPtr);
@@ -294,7 +177,7 @@ export default function TestMath() {
   return (
     <div style={styles.container}>
       <section style={styles.section}>
-        <h3>testing, version 2.6</h3>
+        <h3>testing, version 3.3</h3>
         <h3>📁 Upload an .xyz File</h3>
 
         <div style={{ marginBottom: 8 }}>
