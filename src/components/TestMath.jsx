@@ -176,8 +176,104 @@ export default function TestMath() {
         const y = 10 + yOffset + (zRaw - minZ) * scale;
 
         ctx.fillStyle = `rgb(${Math.floor(r * 255)}, ${Math.floor(g * 255)}, ${Math.floor(b * 255)})`;
-        ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+        ctx.fillRect(Math.round(x), Math.round(y), 2, 2);
       }
+
+      // Draw cells (black dot at centroid)
+      for (let i = 0; i < cellCount; i++) {
+        const idx = i * 16;
+        const p = {
+          xBar: cells[idx + 12],
+          zBar: cells[idx + 14],
+          slopePercent: cells[idx + 5],
+          dx: cells[idx + 6],   // normalized slope x-component
+          dz: cells[idx + 7],   // normalized slope z-component
+          valid: cells[idx + 15] === 1
+        };
+
+        // Skip invalid cells
+        if (!p.valid || p.slopePercent < 2) continue;
+
+        const cx = 10 + xOffset + (p.xBar - minX) * scale;
+        const cy = 10 + yOffset + (p.zBar - minZ) * scale;
+
+        // ctx.fillStyle = "black";
+        // ctx.fillRect(Math.round(cx), Math.round(cy), 5, 5); // slightly bigger dot for visibility
+
+        const arrowLength = 20; // fixed length for all arrows
+        const headLength = 5;   // arrowhead size
+
+        // normalize slope vector
+        const len = Math.sqrt(p.dx * p.dx + p.dz * p.dz) || 1;
+        const nx = (p.dx / len) * arrowLength;
+        const ny = (p.dz / len) * arrowLength;
+
+        const ax = cx + nx;
+        const ay = cy + ny;
+
+        console.log(p.dx, p.dz, ax, ay);
+
+        // draw line
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(ax, ay);
+        ctx.stroke();
+
+        // draw arrowhead
+        const angle = Math.atan2(ny, nx);
+        ctx.beginPath();
+        ctx.moveTo(ax - headLength * Math.cos(angle - Math.PI / 6),
+                  ay - headLength * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(ax, ay);
+        ctx.lineTo(ax - headLength * Math.cos(angle + Math.PI / 6),
+                  ay - headLength * Math.sin(angle + Math.PI / 6));
+        ctx.stroke();
+        // // Draw upward arrow
+        // const arrowLength = 10; // pixels
+        // ctx.strokeStyle = "black";
+        // ctx.lineWidth = 2;
+        // ctx.beginPath();
+        // ctx.moveTo(cx, cy);                // start at centroid
+        // ctx.lineTo(cx+(arrowLength), cy + 0);  // line upward
+        // ctx.stroke();
+
+        // Draw simple arrowhead
+        // ctx.beginPath();
+        // ctx.moveTo(cx - 2, cy - arrowLength + 4);
+        // ctx.lineTo(cx, cy - arrowLength);
+        // ctx.lineTo(cx + 2, cy - arrowLength + 4);
+        // ctx.stroke();
+
+        // // Fixed-length slope arrow pointing in slope direction
+        // const arrowLength = 20; // constant length
+        // const len = Math.sqrt(p.dx*p.dx + p.dz*p.dz) || 1; // normalize
+        // const ax = cx + (p.dx / len) * arrowLength;
+        // const ay = cy + (p.dz / len) * arrowLength; // z → y
+
+        // ctx.strokeStyle = "black";
+        // ctx.lineWidth = 2;
+        // ctx.beginPath();
+        // ctx.moveTo(cx, cy);
+        // ctx.lineTo(ax, ay);
+        // ctx.stroke();
+
+        // // Draw simple arrowhead
+        // const angle = Math.atan2(ay - cy, ax - cx);
+        // const headLength = 5;
+        // ctx.beginPath();
+        // ctx.moveTo(ax - headLength * Math.cos(angle - Math.PI / 6),
+        //           ay - headLength * Math.sin(angle - Math.PI / 6));
+        // ctx.lineTo(ax, ay);
+        // ctx.lineTo(ax - headLength * Math.cos(angle + Math.PI / 6),
+        //           ay - headLength * Math.sin(angle + Math.PI / 6));
+        // ctx.stroke();
+
+
+      }
+
+
 
       free(xyzPtr);
       free(outCountPtr);
@@ -198,7 +294,7 @@ export default function TestMath() {
   return (
     <div style={styles.container}>
       <section style={styles.section}>
-        <h3>testing, version 2.5</h3>
+        <h3>testing, version 2.6</h3>
         <h3>📁 Upload an .xyz File</h3>
 
         <div style={{ marginBottom: 8 }}>
