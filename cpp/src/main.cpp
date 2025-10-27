@@ -14,12 +14,7 @@ extern "C" {
 // Returns a pointer to a float array: [x, y, z, r, g, b, x, y, z, r, g, b, ...]
 // outCount is the number of particles
 extern "C" EMSCRIPTEN_KEEPALIVE
-float* parseXYZFlattened(
-    uint8_t* data, size_t length,
-    int* outCount,
-    float** outCellBuffer,
-    int* outCellCount
-) {
+float* parseXYZFlattened(uint8_t* data, size_t length, int* outCount, float** outCellBuffer, int* outCellCount) {
     std::vector<particle::Particle> particles;
     std::unordered_map<size_t, geometry::Cell> cellMap;
 
